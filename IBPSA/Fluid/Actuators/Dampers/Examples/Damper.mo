@@ -5,11 +5,11 @@ model Damper
   package Medium = IBPSA.Media.Air "Medium model for air";
 
   Modelica.Blocks.Sources.Ramp yRam(
-  duration=0.3,
-  offset=0,
-  startTime=0.2,
-  height=1) annotation (Placement(transformation(extent={{-10,90},{10,110}})));
-
+    duration=0.3,
+    offset=0,
+    startTime=0.2,
+    height=1)
+    annotation (Placement(transformation(extent={{-10,90},{10,110}})));
   IBPSA.Fluid.Sources.Boundary_pT sou(
     redeclare package Medium = Medium,
     p(displayUnit="Pa") = 101335,
@@ -17,33 +17,28 @@ model Damper
     nPorts=4) "Pressure boundary condition"
      annotation (Placement(
         transformation(extent={{-62,-10},{-42,10}})));
-
   IBPSA.Fluid.Sources.Boundary_pT sin(
     redeclare package Medium = Medium,
     nPorts=7) "Pressure boundary condition"
       annotation (Placement(
         transformation(extent={{102,-10},{82,10}})));
-
   PressureIndependent preInd(
     redeclare package Medium = Medium,
     m_flow_nominal=1,
-    dpDam_nominal=5,
-    use_inputFilter=false,
-    v_nominal=3) "A damper with a mass flow proportional to the input signal"
+    dpDamper_nominal=5,
+    use_inputFilter=false)
+    "A damper with a mass flow proportional to the input signal"
     annotation (Placement(transformation(extent={{30,-10},{50,10}})));
   Exponential res(
     redeclare package Medium = Medium,
     m_flow_nominal=1,
-    use_inputFilter=false,
-    dpExp_nominal=0,
-    dp_nominalIncludesDamper=false)
+    use_inputFilter=false)
     "A damper with quadratic relationship between m_flow and dp"
     annotation (Placement(transformation(extent={{30,70},{50,90}})));
   PressureIndependent preIndDpFixed_nominal(
     m_flow_nominal=1,
-    dpDam_nominal=5,
+    dpDamper_nominal=5,
     use_inputFilter=false,
-    v_nominal=3,
     dpFixed_nominal=20,
     redeclare package Medium = Medium)
     "A damper with a mass flow proportional to the input signal and using dpFixed_nominal"
@@ -59,23 +54,24 @@ model Damper
     nPorts=2,
     use_p_in=true,
     p(displayUnit="Pa"),
-    T=293.15) "Pressure boundary condition variable"
+    T=293.15)
+    "Pressure boundary condition variable"
     annotation (Placement(transformation(extent={{-60,-102},{-40,-82}})));
   PressureIndependent preInd0(
     redeclare package Medium = Medium,
     m_flow_nominal=1,
-    dpDam_nominal=5,
-    use_inputFilter=false,
-    v_nominal=3) "A damper with a mass flow proportional to the input signal"
+    dpDamper_nominal=5,
+    use_inputFilter=false)
+    "A damper with a mass flow proportional to the input signal"
     annotation (Placement(transformation(extent={{30,-90},{50,-70}})));
   Modelica.Blocks.Sources.Constant yCst0(k=0)
     annotation (Placement(transformation(extent={{-12,-70},{8,-50}})));
   PressureIndependent preInd1(
     redeclare package Medium = Medium,
     m_flow_nominal=1,
-    dpDam_nominal=5,
-    use_inputFilter=false,
-    v_nominal=3) "A damper with a mass flow proportional to the input signal"
+    dpDamper_nominal=5,
+    use_inputFilter=false)
+    "A damper with a mass flow proportional to the input signal"
     annotation (Placement(transformation(extent={{30,-130},{50,-110}})));
   Modelica.Blocks.Sources.Constant yCst1(k=1)
     annotation (Placement(transformation(extent={{-12,-110},{8,-90}})));
@@ -84,21 +80,18 @@ model Damper
     m_flow_nominal=1,
     use_inputFilter=false,
     linearized=false,
-    char_linear=true,
-    dpExp_nominal=0,
-    dp_nominalIncludesDamper=false)
+    char_linear=true)
     "A damper with quadratic relationship between m_flow and dp and linearized characteristic"
     annotation (Placement(transformation(extent={{30,30},{50,50}})));
   PressureIndependent preIndCha(
     redeclare package Medium = Medium,
     m_flow_nominal=1,
     use_inputFilter=false,
-    v_nominal=3,
-    dpDam_nominal=5,
+    dpDamper_nominal=5,
     l=0.02,
     dpFixed_nominal=100) "A damper with a mass flow proportional to the input signal"
     annotation (Placement(transformation(extent={{30,-170},{50,-150}})));
-  Sources.Boundary_pT                 sou1(
+  Sources.Boundary_pT sou1(
     redeclare package Medium = Medium,
     p(displayUnit="Pa") = 101335,
     nPorts=1,
@@ -106,13 +99,14 @@ model Damper
     T=293.15) "Pressure boundary condition"
      annotation (Placement(
         transformation(extent={{-60,-170},{-40,-150}})));
-    Modelica.Blocks.Sources.Ramp pSouVar1(
+  Modelica.Blocks.Sources.Ramp pSouVar1(
     duration=0.3,
     startTime=0.2,
     offset=Medium.p_default,
     height=400)
     annotation (Placement(transformation(extent={{-100,-162},{-80,-142}})));
-  Modelica.Blocks.Sources.Constant yCst01(k=0.1) annotation (Placement(transformation(extent={{-10,-150},{10,-130}})));
+  Modelica.Blocks.Sources.Constant yCst01(k=0.1)
+    annotation (Placement(transformation(extent={{-10,-150},{10,-130}})));
 equation
   connect(res.port_b, sin.ports[1]) annotation (Line(points={{50,80},{68,80},{68,3.42857},{82,3.42857}},
                          color={0,127,255}));

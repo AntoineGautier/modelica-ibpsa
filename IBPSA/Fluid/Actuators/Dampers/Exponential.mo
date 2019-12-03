@@ -1,39 +1,8 @@
 within IBPSA.Fluid.Actuators.Dampers;
 model Exponential
   "Damper model with exponential characteristics and optional fixed flow resistance"
-  extends IBPSA.Fluid.Actuators.BaseClasses.PartialDamperExponential(
-    dp(nominal=if dp_nominalIncludesDamper then dpExp_nominal else dpExp_nominal + dpDamOpe_nominal),
-    final kFixed=sqrt(kResSqu),
-    final char_linear_pro=char_linear,
-    final dp_nominal=if dp_nominalIncludesDamper then dpExp_nominal else dpExp_nominal + dpDamOpe_nominal);
-  parameter Modelica.SIunits.PressureDifference dpExp_nominal(displayUnit="Pa")
-    "Pressure drop at nominal mass flow rate"
-    annotation(Dialog(group = "Nominal condition"));
-  parameter Boolean dp_nominalIncludesDamper = true
-    "Set to true if dpExp_nominal includes the pressure loss of the open damper"
-    annotation(Dialog(group="Nominal condition"));
-  parameter Boolean char_linear = false
-    "Set to true to linearize the flow characteristics of damper plus fixed resistance"
-    annotation(Evaluate=true, Dialog(tab="Advanced"));
-protected
-  parameter Modelica.SIunits.PressureDifference dpDamOpe_nominal(displayUnit="Pa")=
-     k1*m_flow_nominal^2/2/Medium.density(sta_default)/A^2
-    "Pressure drop of fully open damper at nominal flow rate";
-  parameter Real kResSqu(unit="kg.m", fixed=false)
-    "Resistance coefficient for fixed resistance element";
-initial equation
-  assert(abs(dpExp_nominal) > Modelica.Constants.eps or not dp_nominalIncludesDamper,
-    "dpExp_nominal cannot be zero when dp_nominalIncludesDamper is true.");
-  assert(kResSqu >= 0,
-         "Wrong parameters in damper model: dpExp_nominal < dpDamOpe_nominal"
-          + "\n  dpExp_nominal = " + String(dpExp_nominal)
-          + "\n  dpDamOpe_nominal = " + String(dpDamOpe_nominal));
-  if not casePreInd then
-    kResSqu = if dpExp_nominal < Modelica.Constants.eps then 0
-    elseif dp_nominalIncludesDamper then
-      m_flow_nominal^2 / (dpExp_nominal - dpDamOpe_nominal)
-    else m_flow_nominal^2 / dpExp_nominal;
-  end if;
+  extends IBPSA.Fluid.Actuators.BaseClasses.PartialDamperExponential;
+
 annotation (
 defaultComponentName="dam",
 Documentation(info="<html>

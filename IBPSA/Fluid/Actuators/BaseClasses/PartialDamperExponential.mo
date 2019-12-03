@@ -2,15 +2,23 @@ within IBPSA.Fluid.Actuators.BaseClasses;
 partial model PartialDamperExponential
   "Partial model for air dampers with exponential opening characteristics"
   extends IBPSA.Fluid.BaseClasses.PartialResistance(
+    final dp_nominal=dpDamper_nominal+dpFixed_nominal,
     m_flow_turbulent=if use_deltaM then deltaM * m_flow_nominal else
     eta_default*ReC*sqrt(A)*facRouDuc);
   extends IBPSA.Fluid.Actuators.BaseClasses.ActuatorSignal;
+  parameter Modelica.SIunits.PressureDifference dpDamper_nominal(displayUnit="Pa") = 10
+    "Pressure drop of fully open damper at nominal conditions"
+    annotation(Dialog(group = "Nominal condition"));
+  parameter Modelica.SIunits.PressureDifference dpFixed_nominal(displayUnit="Pa") = 0
+    "Pressure drop of duct and other resistances that are in series, at nominal conditions"
+    annotation(Dialog(group = "Nominal condition"));
   parameter Boolean use_deltaM = true
     "Set to true to use deltaM for turbulent transition, else ReC is used";
   parameter Real deltaM = 0.3
     "Fraction of nominal mass flow rate where transition to turbulent occurs"
     annotation(Dialog(enable=use_deltaM));
-  parameter Modelica.SIunits.Velocity v_nominal = 1 "Nominal face velocity";
+  final parameter Modelica.SIunits.Velocity v_nominal = (2 / rho_default / k1 * dpDamper_nominal)^0.5
+    "Nominal face velocity";
   final parameter Modelica.SIunits.Area A=m_flow_nominal/rho_default/v_nominal
     "Face area";
   parameter Boolean roundDuct = false
@@ -36,8 +44,11 @@ partial model PartialDamperExponential
     "Set to true to use constant density for flow friction"
     annotation(Evaluate=true, Dialog(tab="Advanced"));
   Medium.Density rho "Medium density";
-  parameter Real kFixed
+  final parameter Real kFixed(fixed=false)
     "Flow coefficient of fixed resistance that may be in series with damper, k=m_flow/sqrt(dp), with unit=(kg.m)^(1/2).";
+  parameter Boolean char_linear = false
+    "If char_linear then the flow characteristic is linearized"
+    annotation(Evaluate=true, Dialog(tab="Advanced"));
   Real kDam
     "Flow coefficient of damper, k=m_flow/sqrt(dp), with unit=(kg.m)^(1/2)";
   Real k
@@ -62,21 +73,20 @@ protected
     (Modelica.Math.log(k1)*yU^2 + b*yU^2 + (-2*b - 2*a)*yU + b + a)/(yU^2 - 2*yU + 1)}
     "Polynomial coefficients for curve fit for y > yu";
   parameter Real facRouDuc= if roundDuct then sqrt(Modelica.Constants.pi)/2 else 1;
-  parameter Boolean char_linear_pro = false
-    "If char_linear_pro then the flow characteristic is linearized"
-    annotation(Evaluate=true);
   parameter Real kDamMax =  (2 * rho_default / k1)^0.5 * A
     "Flow coefficient of damper fully open, k=m_flow/sqrt(dp), with unit=(kg.m)^(1/2)";
-  parameter Real kTotMax = if kFixed > Modelica.Constants.eps then
+  parameter Real kTotMax = if dpFixed_nominal > Modelica.Constants.eps then
     sqrt(1 / (1 / kFixed^2 + 1 / kDamMax^2)) else kDamMax
     "Flow coefficient of damper fully open plus fixed resistance, with unit=(kg.m)^(1/2)";
   parameter Real kDamMin = (2 * rho_default / k0)^0.5 * A
     "Flow coefficient of damper fully closed, with unit=(kg.m)^(1/2)";
-  parameter Real kTotMin = if kFixed > Modelica.Constants.eps then
+  parameter Real kTotMin = if dpFixed_nominal > Modelica.Constants.eps then
     sqrt(1 / (1 / kFixed^2 + 1 / kDamMin^2)) else kDamMin
     "Flow coefficient of damper fully closed + fixed resistance, with unit=(kg.m)^(1/2)";
   Real y_char_linear "Actuator signal modified for characteristic linearization";
 initial equation
+  assert(dpDamper_nominal > Modelica.Constants.eps, "dpDamper_nominal must be strictly greater than zero.");
+  assert(dpFixed_nominal >= 0, "dpFixed_nominal must be greater than zero.");
   assert(yL < yU, "yL must be strictly lower than yU.");
   assert(m_flow_turbulent > 0, "m_flow_turbulent must be strictly greater than zero.");
   assert(k1 >= 0.2, "k1 must be greater than 0.2. k1=" + String(k1));
@@ -85,22 +95,25 @@ initial equation
   assert(k0 <= 1e10, "k0 must be lower than 1e10. k0=" + String(k0));
   assert(k0 > kL, "k0 must be strictly higher than exp(a + b * (1 - yL)). k0=" +
     String(k0) + ", exp(...) = " + String(kL));
+  kFixed = if dpFixed_nominal > Modelica.Constants.eps then
+    m_flow_nominal / sqrt(dpFixed_nominal) else Modelica.Constants.inf;
 equation
   rho = if use_constant_density then
     rho_default else
     Medium.density(Medium.setState_phX(port_a.p, inStream(port_a.h_outflow), inStream(port_a.Xi_outflow)));
   // Optional characteristic linearization
-  if char_linear_pro then
+  if char_linear then
     // Guard against y_actual that can be negative within the solver tolerance.
     y_char_linear = if linearized then sqrt(abs(y_actual)) else y_actual;
     k = y_char_linear * (kTotMax - kTotMin) + kTotMin;
-    kDam = if kFixed > Modelica.Constants.eps then
+    kDam = if dpFixed_nominal > Modelica.Constants.eps then
       sqrt(1 / (1 / k^2 - 1 / kFixed^2)) else k;
   else
     y_char_linear = y_actual;
     kDam=sqrt(2*rho)*A/IBPSA.Fluid.Actuators.BaseClasses.exponentialDamper(
       y=y_actual, a=a, b=b, cL=cL, cU=cU, yL=yL, yU=yU);
-    k = if (kFixed>Modelica.Constants.eps) then sqrt(1/(1/kFixed^2 + 1/kDam^2)) else kDam;
+    k = if dpFixed_nominal > Modelica.Constants.eps then
+      sqrt(1/(1/kFixed^2 + 1/kDam^2)) else kDam;
   end if;
   // Pressure drop calculation
   if not casePreInd then

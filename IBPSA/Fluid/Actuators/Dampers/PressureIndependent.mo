@@ -2,20 +2,11 @@ within IBPSA.Fluid.Actuators.Dampers;
 model PressureIndependent
   "Pressure independent damper"
   extends IBPSA.Fluid.Actuators.Dampers.Exponential(
-    dp(nominal=dp_nominal),
-    final casePreInd=true,
     final linearized=false,
     final from_dp=true,
-    final dp_nominalIncludesDamper=true,
-    final dpExp_nominal=dpDam_nominal+dpFixed_nominal,
-    final k1=2 * rho_default * (A / kDam_1)^2,
-    final k0=2 * rho_default * (A / kDam_0)^2);
-  parameter Modelica.SIunits.PressureDifference dpDam_nominal(displayUnit="Pa", min=0)
-    "Pressure drop of fully open damper at nominal conditions"
-     annotation(Dialog(group = "Nominal condition"));
-  parameter Modelica.SIunits.PressureDifference dpFixed_nominal(displayUnit="Pa", min=0) = 0
-    "Pressure drop of duct and other resistances that are in series, at nominal conditions"
-     annotation(Dialog(group = "Nominal condition"));
+    final casePreInd=true,
+    final kDamMin=l * kDamMax,
+    final k0=2 * rho_default * (A / kDamMin)^2);
   parameter Real l(min=1e-10, max=1, unit="1") = 0.0001
     "Damper leakage, l=k(y=0)/k(y=1)";
   parameter Real c_regul(unit="s.m") = 1E-4
@@ -30,16 +21,6 @@ model PressureIndependent
 protected
   parameter Real y_min = 2E-2
     "Minimum value of control signal before zeroing the opening.";
-  parameter Real kDam_1 = m_flow_nominal / sqrt(abs(dpDam_nominal))
-    "Flow coefficient of damper fully open, k=m_flow/sqrt(dp), with unit=(kg.m)^(1/2)";
-  parameter Real kTot_1 = if dpFixed_nominal > Modelica.Constants.eps then
-    sqrt(1 / (1 / kResSqu + 1 / kDam_1^2)) else kDam_1
-    "Flow coefficient of damper fully open + fixed resistance, with unit=(kg.m)^(1/2)";
-  parameter Real kDam_0 = l * kDam_1
-    "Flow coefficient of damper fully closed, with unit=(kg.m)^(1/2)";
-  parameter Real kTot_0 = if dpFixed_nominal > Modelica.Constants.eps then
-    sqrt(1 / (1 / kResSqu + 1 / kDam_0^2)) else kDam_0
-    "Flow coefficient of damper fully closed + fixed resistance, with unit=(kg.m)^(1/2)";
   parameter Integer sizeSupSplBnd = 5
     "Number of support points on each quadratic domain for spline interpolation";
   parameter Integer sizeSupSpl = 2 * sizeSupSplBnd + 3
@@ -76,9 +57,6 @@ protected
   Modelica.SIunits.PressureDifference dp_lim(displayUnit="Pa")
     "Pressure drop limit before interpolation between pressure independent and leakage flow";
 initial equation
-  kResSqu = if dpFixed_nominal > Modelica.Constants.eps then
-    m_flow_nominal^2 / dpFixed_nominal else 0
-    "Flow coefficient of fixed resistance in series with damper, k=m_flow/sqrt(dp), with unit=(kg.m)^(1/2)";
   (kSupSpl, idx_sorted) = Modelica.Math.Vectors.sort(kSupSpl_raw, ascending=true);
   ySupSpl = ySupSpl_raw[idx_sorted];
   invSplDer = IBPSA.Utilities.Math.Functions.splineDerivatives(x=kSupSpl, y=ySupSpl);
@@ -91,17 +69,17 @@ equation
   // rate values.
   dp_0 = IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_m_flow(
       m_flow=m_flow_lim,
-      k=kTot_0,
+      k=kTotMin,
       m_flow_turbulent=y_min * m_flow_nominal);
   dp_1 = IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_m_flow(
     m_flow=y_internal * m_flow_nominal,
-    k=kTot_1,
+    k=kTotMax,
     m_flow_turbulent=m_flow_turbulent);
   m_flow_smooth = smooth(2, noEvent(
     if dp <= dp_1 then
       IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp(
         dp=dp,
-        k=kTot_1,
+        k=kTotMax,
         m_flow_turbulent=m_flow_turbulent)
     elseif dp <= dp_1 + dp_small then
       IBPSA.Utilities.Math.Functions.quinticHermite(
@@ -110,18 +88,18 @@ equation
         x2=dp_1 + dp_small,
         y1=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp(
           dp=dp_1,
-          k=kTot_1,
+          k=kTotMax,
           m_flow_turbulent=m_flow_turbulent),
         y2=y_internal * m_flow_nominal + c_regul * dp_small,
         y1d=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp_der(
           dp=dp_1,
-          k=kTot_1,
+          k=kTotMax,
           m_flow_turbulent=m_flow_turbulent,
           dp_der=1),
         y2d=c_regul,
         y1dd=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp_der2(
           dp=dp_1,
-          k=kTot_1,
+          k=kTotMax,
           m_flow_turbulent=m_flow_turbulent,
           dp_der=1,
           dp_der2=0),
@@ -136,41 +114,45 @@ equation
         y1=y_internal * m_flow_nominal + c_regul * (dp_lim - dp_1),
         y2=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp(
           dp=dp_0,
-          k=kTot_0,
+          k=kTotMin,
           m_flow_turbulent=y_min * m_flow_nominal),
         y1d=c_regul,
         y2d=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp_der(
           dp=dp_0,
-          k=kTot_0,
+          k=kTotMin,
           m_flow_turbulent=y_min * m_flow_nominal,
           dp_der=1),
         y1dd=0,
         y2dd=IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp_der2(
           dp=dp_0,
-          k=kTot_0,
+          k=kTotMin,
           m_flow_turbulent=y_min * m_flow_nominal,
           dp_der=1,
           dp_der2=0))
     else
       IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_dp(
         dp=dp,
-        k=kTot_0,
+        k=kTotMin,
         m_flow_turbulent=y_min * m_flow_nominal)));
   // Computation of damper opening
+
+  // Check: compute dpDam = dp - IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_m_flow(m, kFixed)
+  //
+
   kThetaTot = IBPSA.Utilities.Math.Functions.regStep(
     x=dp - dp_1 - dp_small / 2,
     y1=IBPSA.Utilities.Math.Functions.regStep(
       x=dp - dp_0 + dp_small / 2,
-      y1=2 * rho * A^2 / kTot_0^2,
+      y1=2 * rho * A^2 / kTotMin^2,
       y2=2 * rho * A^2 / IBPSA.Fluid.BaseClasses.FlowModels.basicFlowFunction_inv(
         m_flow=m_flow,
         dp=dp, m_flow_turbulent=m_flow_turbulent, m_flow_small=m_flow_small, dp_small=dp_small,
-        k_min=kTot_0, k_max=kTot_1),
+        k_min=kTotMin, k_max=kTotMax),
       x_small=dp_small / 2),
-    y2=2 * rho * A^2 / kTot_1^2,
+    y2=2 * rho * A^2 / kTotMax^2,
     x_small=dp_small / 2);
   kThetaDam = if dpFixed_nominal > Modelica.Constants.eps then
-    kThetaTot - 2 * rho * A^2 / kResSqu else kThetaTot;
+    kThetaTot - 2 * rho * A^2 / kFixed^2 else kThetaTot; // SUSPICIOUS
   y_actual_smooth = IBPSA.Utilities.Math.Functions.regStep(
     x=y_internal - y_min,
     y1=IBPSA.Fluid.Actuators.BaseClasses.exponentialDamper_inv(
