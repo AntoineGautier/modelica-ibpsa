@@ -10,7 +10,7 @@ partial model PartialDamperExponential
     "Pressure drop of fully open damper at nominal conditions"
     annotation(Dialog(group = "Nominal condition"));
   parameter Modelica.SIunits.PressureDifference dpFixed_nominal(displayUnit="Pa") = 0
-    "Pressure drop of duct and other resistances that are in series, at nominal conditions"
+    "Pressure drop of duct and other resistances in series, at nominal conditions"
     annotation(Dialog(group = "Nominal condition"));
   parameter Boolean use_deltaM = true
     "Set to true to use deltaM for turbulent transition, else ReC is used";

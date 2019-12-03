@@ -9,11 +9,14 @@ model MixingBox
 
   IBPSA.Fluid.Actuators.Dampers.MixingBox mixBox(
     mOut_flow_nominal=1,
-    dpOut_nominal=20,
+    dpDamOut_nominal=20,
+    dpFixOut_nominal=0,
     mRec_flow_nominal=1,
-    dpRec_nominal=20,
+    dpDamRec_nominal=20,
+    dpFixRec_nominal=0,
     mExh_flow_nominal=1,
-    dpExh_nominal=20,
+    dpDamExh_nominal=20,
+    dpFixExh_nominal=0,
     redeclare package Medium = Medium) "mixing box"
     annotation (Placement(transformation(extent={{14,-22},{34,-2}})));
     IBPSA.Fluid.Sources.Boundary_pT bouIn(             redeclare package
