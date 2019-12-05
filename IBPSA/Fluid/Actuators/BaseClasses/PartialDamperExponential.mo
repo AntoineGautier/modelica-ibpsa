@@ -6,7 +6,7 @@ partial model PartialDamperExponential
     m_flow_turbulent=if use_deltaM then deltaM * m_flow_nominal else
     eta_default*ReC*sqrt(A)*facRouDuc);
   extends IBPSA.Fluid.Actuators.BaseClasses.ActuatorSignal;
-  parameter Modelica.SIunits.PressureDifference dpDamper_nominal(displayUnit="Pa") = 10
+  parameter Modelica.SIunits.PressureDifference dpDamper_nominal(displayUnit="Pa")
     "Pressure drop of fully open damper at nominal conditions"
     annotation(Dialog(group = "Nominal condition"));
   parameter Modelica.SIunits.PressureDifference dpFixed_nominal(displayUnit="Pa") = 0

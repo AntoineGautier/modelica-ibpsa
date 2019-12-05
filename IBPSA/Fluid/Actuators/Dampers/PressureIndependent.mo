@@ -5,8 +5,7 @@ model PressureIndependent
     final linearized=false,
     final from_dp=true,
     final casePreInd=true,
-    final kDamMin=l * kDamMax,
-    final k0=2 * rho_default * (A / kDamMin)^2);
+    final k0=2 * rho_default * (A / (l * kDamMax))^2);
   parameter Real l(min=1e-10, max=1, unit="1") = 0.0001
     "Damper leakage, l=k(y=0)/k(y=1)";
   parameter Real c_regul(unit="s.m") = 1E-4
